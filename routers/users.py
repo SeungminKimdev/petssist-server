@@ -1,13 +1,13 @@
 import logging
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends, Request, status
+from fastapi import APIRouter, HTTPException, Depends, Request, status, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 from core.security import create_access_token, get_password_hash, create_refresh_token
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas import UserCreateRequest, UserCreate, RefreshTokenCreate
-from crud import create_user, crud_create_refresh_token
+from crud import create_user, crud_create_refresh_token, get_user_by_loginId
 
 router = APIRouter()
 
@@ -26,7 +26,7 @@ async def register(request: Request, db: Session = Depends(get_db)):
         errors = [item['loc'][0] for item in error_messages]
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={"errorMessage": f"{errors} is a required field."}
+            content={"errorMessage": f"{errors} is a required field"}
         )
     
     try:
@@ -58,4 +58,32 @@ async def register(request: Request, db: Session = Depends(get_db)):
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"},
+        )
+
+# loginId 중복 확인 기능
+@router.get("/check-loginid", status_code=status.HTTP_200_OK)
+async def check_loginid(loginid: str = Query(...), db: Session = Depends(get_db)):
+    if not loginid.strip():
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"errorMessage": "Loginid cannot be null or empty"}
+        )
+
+    try:
+        existing_user = get_user_by_loginId(db, loginid)
+        if existing_user:
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={"errorMessage": "Loginid is already in use"}
+            )
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "Loginid is available"}
+        )
+
+    except Exception as e:
+        logger.error(f"Error occurred while creating user: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
         )
