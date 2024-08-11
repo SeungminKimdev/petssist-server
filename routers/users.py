@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends, Request, status, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
-from core.security import create_access_token, get_password_hash, create_refresh_token
+from core.security import create_access_token, get_password_hash, create_refresh_token, verify_password
+from core.security import REFRESH_TOKEN_EXPIRE_DAYS
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas import UserCreateRequest, UserCreate, RefreshTokenCreate
@@ -42,7 +43,7 @@ async def register(request: Request, db: Session = Depends(get_db)):
         refresh_token_data = RefreshTokenCreate(
             token=refresh_token_str,
             createdAt=datetime.utcnow(),
-            expiresAt=datetime.utcnow() + timedelta(days=7)  # 리프레시 토큰 만료 시간 설정
+            expiresAt=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         )
         crud_create_refresh_token(db, refresh_token_data, db_user.id)
         
@@ -83,6 +84,52 @@ async def check_loginid(loginid: str = Query(...), db: Session = Depends(get_db)
 
     except Exception as e:
         logger.error(f"Error occurred while creating user: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 로그인 기능
+@router.post("/login", status_code=status.HTTP_200_OK)
+async def login(request: Request, db: Session = Depends(get_db)):
+    try:
+        loginData = await request.json()
+        loginId = loginData.get("loginId")
+        password = loginData.get("password")
+
+        # 사용자가 존재하는지 확인
+        dbUser = get_user_by_loginId(db, loginId)
+        if not dbUser:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "LoginId does not exist"}
+            )
+
+        # 비밀번호 확인
+        if not verify_password(password, dbUser.password):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Password is incorrect"}
+            )
+
+        accessToken = create_access_token(data={"sub": dbUser.loginId})
+        refreshTokenStr = create_refresh_token(data={"sub": dbUser.loginId})
+        refreshTokenData = RefreshTokenCreate(
+            token=refreshTokenStr,
+            createdAt=datetime.utcnow(),
+            expiresAt=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        )
+        crud_create_refresh_token(db, refreshTokenData, dbUser.id)
+
+        headers = {"accessToken": accessToken}
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "Login successfully"},
+            headers=headers
+        )
+
+    except Exception as e:
+        logger.error(f"Error occurred while logging in: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"}
