@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from . import test
+from routers import users
 
 router = APIRouter()
-router.include_router(test.router, tags=['test'])
+router.include_router(users.router, tags=['users'])

@@ -15,7 +15,7 @@ class Picture(PictureBase):
     dogId: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class SenseDataBase(BaseModel):
     measureTime: datetime
@@ -37,7 +37,7 @@ class SenseData(SenseDataBase):
     deviceId: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class DogBase(BaseModel):
     dogName: str
@@ -56,7 +56,7 @@ class Dog(DogBase):
     senseDatas: List[SenseData] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class DeviceBase(BaseModel):
     name: str
@@ -69,7 +69,7 @@ class Device(DeviceBase):
     datas: List[SenseData] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ConnectedBase(BaseModel):
     connectTime: datetime
@@ -82,7 +82,7 @@ class Connected(ConnectedBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class RefreshTokenBase(BaseModel):
     token: str
@@ -97,7 +97,7 @@ class RefreshToken(RefreshTokenBase):
     userId: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserBase(BaseModel):
     loginId: str
@@ -106,6 +106,11 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+class UserCreateRequest(BaseModel):
+    loginId: str
+    password: str
+    name: str
+
 class User(UserBase):
     id: int
     dogs: List[Dog] = []
@@ -113,4 +118,4 @@ class User(UserBase):
     tokens: List[RefreshToken] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True

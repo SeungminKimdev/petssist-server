@@ -11,9 +11,9 @@ class User(Base):
     password = Column(String(255), nullable=False)
     name = Column(String(30), unique=True, nullable=False)
     
-    dogs = relationship('Dog', back_populates='userId')
-    connects = relationship('Connected', back_populates='userId')
-    tokens = relationship('RefreshToken', back_populates='userId')
+    dogs = relationship('Dog', back_populates='user')
+    connects = relationship('Connected', back_populates='user')
+    tokens = relationship('RefreshToken', back_populates='user')
 
 class Dog(Base):
     __tablename__ = 'dog'
@@ -26,8 +26,9 @@ class Dog(Base):
     sex = Column(String(20), nullable=False)
     weight = Column(Float, nullable=False)
     
-    pictures = relationship('Picture', back_populates='dogId')
-    senseDatas = relationship('SenseData', back_populates='dogId')
+    user = relationship('User', back_populates='dogs')
+    pictures = relationship('Picture', back_populates='dog')
+    senseDatas = relationship('SenseData', back_populates='dog')
 
 class Picture(Base):
     __tablename__ = 'picture'
@@ -37,6 +38,8 @@ class Picture(Base):
     fileName = Column(String(255), nullable=False)
     contentType = Column(String(128), nullable=False)
     photoPath = Column(String(255), nullable=False)
+
+    dog = relationship('Dog', back_populates='pictures')
 
 class SenseData(Base):
     __tablename__ = 'senseData'
@@ -54,14 +57,17 @@ class SenseData(Base):
     gz = Column(Integer, nullable=False)
     temperature = Column(Float, nullable=False)
 
+    dog = relationship('Dog', back_populates='senseDatas')
+    device = relationship('Device', back_populates='datas')
+
 class Device(Base):
     __tablename__ = 'device'
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(100), nullable=False)
     
-    datas = relationship('SenseData', back_populates='deviceId')
-    connects = relationship('Connected', back_populates='deviceId')
+    datas = relationship('SenseData', back_populates='device')
+    connects = relationship('Connected', back_populates='device')
 
 class Connected(Base):
     __tablename__ = 'connected'
@@ -71,6 +77,9 @@ class Connected(Base):
     deviceId = Column(Integer, ForeignKey('device.id'))
     connectTime = Column(DateTime(timezone=True), nullable=False)
 
+    user = relationship('User', back_populates='connects')
+    device = relationship('Device', back_populates='connects')
+
 class RefreshToken(Base):
     __tablename__ = 'refreshToken'
     
@@ -79,3 +88,5 @@ class RefreshToken(Base):
     token = Column(String(500), nullable=False)
     createdAt = Column(DateTime(timezone=True), nullable=False)
     expiresAt = Column(DateTime(timezone=True), nullable=False)
+
+    user = relationship('User', back_populates='tokens')
