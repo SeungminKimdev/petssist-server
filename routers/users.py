@@ -8,7 +8,7 @@ from core.security import REFRESH_TOKEN_EXPIRE_DAYS
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas import UserCreateRequest, UserCreate, RefreshTokenCreate
-from crud import create_user, crud_create_refresh_token, get_user_by_loginId, get_refresh_token, delete_refresh_token
+from crud import create_user, crud_create_refresh_token, get_user_by_loginId, get_refresh_token_by_user, delete_refresh_token
 from routers.auth import verify_and_refresh_token
 
 router = APIRouter()
@@ -114,7 +114,7 @@ async def login(request: Request, db: Session = Depends(get_db)):
             )
         
         # 잔여 리프레시 토큰 삭제
-        existing_refresh_token = get_refresh_token(db, dbUser.id)
+        existing_refresh_token = get_refresh_token_by_user(db, dbUser.id)
         if existing_refresh_token:
             delete_refresh_token(db, existing_refresh_token.id)
 

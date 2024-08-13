@@ -42,6 +42,7 @@ class SenseData(SenseDataBase):
 class DogBase(BaseModel):
     dogName: str
     breed: str
+    breedCategory: int
     dogAge: int
     sex: str
     weight: float

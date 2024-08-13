@@ -22,6 +22,7 @@ class Dog(Base):
     userId = Column(Integer, ForeignKey('user.id'))
     dogName = Column(String(255), nullable=False)
     breed = Column(String(255), nullable=False)
+    breedCategory = Column(Integer, nullable=False)
     dogAge = Column(Integer, nullable=False)
     sex = Column(String(20), nullable=False)
     weight = Column(Float, nullable=False)
