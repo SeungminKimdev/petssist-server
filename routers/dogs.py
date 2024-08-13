@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, status, Header, Body
+from fastapi import APIRouter, HTTPException, Depends, Request, status, Header, Body, File, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from routers.auth import verify_and_refresh_token, decode_access_token
-from crud import create_dog, get_user_by_loginId
-from schemas import DogCreate
+from crud import create_dog, get_user_by_loginId, create_picture, get_pictures_by_dog, get_dog_by_user
+from schemas import DogCreate, PictureCreate
 import logging
 from pydantic import ValidationError
+import shutil
+import os
 
 router = APIRouter()
 
@@ -14,6 +16,7 @@ router = APIRouter()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# 강아지 정보 등록
 @router.post("/dogs", status_code=status.HTTP_201_CREATED)
 async def add_dog(request: Request, accessToken: str = Header(...), db: Session = Depends(get_db)):
     # 토큰 검증
@@ -59,6 +62,76 @@ async def add_dog(request: Request, accessToken: str = Header(...), db: Session 
             )
     except Exception as e:
         logger.error(f"Error adding dog: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 강아지 사진 업로드
+@router.post("/dogs/photos", status_code=status.HTTP_201_CREATED)
+async def upload_dog_photo(accessToken: str = Header(...), db: Session = Depends(get_db), image: UploadFile = File(...)):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errorMessage": result}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+            
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+        # 기존 사진이 있는지 확인
+        existing_photo = get_pictures_by_dog(db, dog.id)
+        if existing_photo:
+            # 기존 파일 삭제
+            if os.path.exists(existing_photo.photoPath):
+                os.remove(existing_photo.photoPath)
+
+            # 새 파일 경로 생성
+            photo_path = f"photos/{db_user.name}_profile"
+            with open(photo_path, "wb") as buffer:
+                shutil.copyfileobj(image.file, buffer)
+
+            # 기존 사진 정보 업데이트
+            existing_photo.fileName = image.filename
+            existing_photo.contentType = image.content_type
+            existing_photo.photoPath = photo_path
+            db.commit()
+
+        else:
+            # 사진 정보 데이터베이스에 저장 (새 사진)
+            photo_path = f"photos/{db_user.name}_profile"
+            with open(photo_path, "wb") as buffer:
+                shutil.copyfileobj(image.file, buffer)
+            
+            photo_data = PictureCreate(
+                fileName=image.filename,
+                contentType=image.content_type,
+                photoPath=photo_path
+            )
+            logger.warning(f"{dog.id}")
+            create_picture(db, photo_data, dog.id)
+
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={"message": "Photo upload completed"}
+        )
+    except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"}
