@@ -157,7 +157,7 @@ async def get_user_info(accessToken: str = Header(...), db: Session = Depends(ge
         if not db_user:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"errorMessage": "Server error1"}
+                content={"errorMessage": "Server error"}
             )
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
@@ -170,5 +170,5 @@ async def get_user_info(accessToken: str = Header(...), db: Session = Depends(ge
     except:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"errorMessage": "Server error2"}
+            content={"errorMessage": "Server error"}
         )
