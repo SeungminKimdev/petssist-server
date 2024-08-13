@@ -147,3 +147,9 @@ def delete_refresh_token(db: Session, token_id: int) -> None:
     except SQLAlchemyError as e:
         db.rollback()
         raise Exception(f"Database error: {str(e)}")
+    
+def get_refresh_token_by_user(db: Session, user_id: int) -> models.RefreshToken:
+    try:
+        return db.query(models.RefreshToken).filter(models.RefreshToken.userId == user_id).first()
+    except SQLAlchemyError as e:
+        raise Exception(f"Database error: {str(e)}")

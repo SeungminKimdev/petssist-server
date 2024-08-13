@@ -1,14 +1,15 @@
 import logging
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends, Request, status, Query
+from fastapi import APIRouter, HTTPException, Depends, Request, status, Query, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
-from core.security import create_access_token, get_password_hash, create_refresh_token, verify_password
+from core.security import create_access_token, get_password_hash, create_refresh_token, verify_password, decode_access_token
 from core.security import REFRESH_TOKEN_EXPIRE_DAYS
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas import UserCreateRequest, UserCreate, RefreshTokenCreate
 from crud import create_user, crud_create_refresh_token, get_user_by_loginId, get_refresh_token, delete_refresh_token
+from routers.auth import verify_and_refresh_token
 
 router = APIRouter()
 
@@ -140,3 +141,34 @@ async def login(request: Request, db: Session = Depends(get_db)):
             content={"errorMessage": "Server error"}
         )
 
+#유저 정보 조회 기능
+@router.get("/users/me", status_code=status.HTTP_200_OK)
+async def get_user_info(accessToken: str = Header(...), db: Session = Depends(get_db)):
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errorMessage": result}
+        )
+    try:
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error1"}
+            )
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={
+                "loginId": db_user.loginId,
+                "name": db_user.name
+            },
+            headers={"accessToken": result}
+        )
+    except:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error2"}
+        )
