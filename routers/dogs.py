@@ -207,3 +207,54 @@ async def update_dog_info(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"}
         )
+
+# 강아지 정보 조회
+@router.get("/dogs/me", status_code=status.HTTP_200_OK)
+async def get_dog_info(accessToken: str = Header(...), db: Session = Depends(get_db)):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errorMessage": "Invalid token"}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+        
+        # 사용자의 강아지 정보 조회
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+
+        # 성공 시 강아지 정보 반환
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "dogName": dog.dogName,
+                "breed": dog.breed,
+                "breedCategory": dog.breedCategory,
+                "dogAge": dog.dogAge,
+                "sex": dog.sex,
+                "weight": dog.weight
+            },
+            headers={"accessToken": result}
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching dog information: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
