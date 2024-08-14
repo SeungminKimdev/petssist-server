@@ -53,7 +53,8 @@ async def add_dog(request: Request, accessToken: str = Header(...), db: Session 
         if db_dog:
             return JSONResponse(
                 status_code=status.HTTP_201_CREATED,
-                content={"message": "Dog information added successfully"}
+                content={"message": "Dog information added successfully"},
+                headers={"accessToken": result}
             )
         else:
             return JSONResponse(
@@ -129,9 +130,79 @@ async def upload_dog_photo(accessToken: str = Header(...), db: Session = Depends
 
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
-            content={"message": "Photo upload completed"}
+            content={"message": "Photo upload completed"},
+            headers={"accessToken": result}
         )
     except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 강아지 정보 수정
+@router.put("/dogs/me", status_code=status.HTTP_200_OK)
+async def update_dog_info(
+    accessToken: str = Header(...),
+    db: Session = Depends(get_db),
+    dogName: str = Body(...),
+    breed: str = Body(...),
+    breedCategory: int = Body(...),
+    dogAge: int = Body(...),
+    sex: str = Body(...),
+    weight: float = Body(...)
+):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errorMessage": result}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+        
+        # 사용자의 강아지 정보 조회
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+
+        # 강아지 정보 업데이트
+        dog.dogName = dogName
+        dog.breed = breed
+        dog.breedCategory = breedCategory
+        dog.dogAge = dogAge
+        dog.sex = sex
+        dog.weight = weight
+
+        db.commit()
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"message": "Dog information change successfully"},
+            headers={"accessToken": result}
+        )
+
+    except ValidationError as e:
+        error_messages = e.errors()
+        errors = [item['loc'][0] for item in error_messages]
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"errorMessage": f"{errors} is a required field"}
+        )
+    except Exception as e:
+        logger.error(f"Error updating dog: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"}
