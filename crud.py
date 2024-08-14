@@ -44,9 +44,9 @@ def create_dog(db: Session, dog: schemas.DogCreate, user_id: int) -> models.Dog:
         db.rollback()
         raise Exception(f"Database error: {str(e)}")
 
-def get_dogs_by_user(db: Session, user_id: int) -> list[models.Dog]:
+def get_dog_by_user(db: Session, user_id: int) -> list[models.Dog]:
     try:
-        return db.query(models.Dog).filter(models.Dog.userId == user_id).all()
+        return db.query(models.Dog).filter(models.Dog.userId == user_id).first()
     except SQLAlchemyError as e:
         raise Exception(f"Database error: {str(e)}")
 
@@ -64,7 +64,7 @@ def create_picture(db: Session, picture: schemas.PictureCreate, dog_id: int) -> 
 
 def get_pictures_by_dog(db: Session, dog_id: int) -> list[models.Picture]:
     try:
-        return db.query(models.Picture).filter(models.Picture.dogId == dog_id).all()
+        return db.query(models.Picture).filter(models.Picture.dogId == dog_id).first()
     except SQLAlchemyError as e:
         raise Exception(f"Database error: {str(e)}")
 
