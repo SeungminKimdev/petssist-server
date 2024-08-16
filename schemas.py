@@ -34,7 +34,6 @@ class SenseDataCreate(SenseDataBase):
 class SenseData(SenseDataBase):
     id: int
     dogId: int
-    deviceId: int
 
     class Config:
         from_attributes = True
@@ -55,32 +54,6 @@ class Dog(DogBase):
     userId: int
     pictures: List[Picture] = []
     senseDatas: List[SenseData] = []
-
-    class Config:
-        from_attributes = True
-
-class DeviceBase(BaseModel):
-    name: str
-
-class DeviceCreate(DeviceBase):
-    pass
-
-class Device(DeviceBase):
-    id: int
-    datas: List[SenseData] = []
-
-    class Config:
-        from_attributes = True
-
-class ConnectedBase(BaseModel):
-    connectTime: datetime
-
-class ConnectedCreate(ConnectedBase):
-    userId: int
-    deviceId: int
-
-class Connected(ConnectedBase):
-    id: int
 
     class Config:
         from_attributes = True
@@ -115,7 +88,6 @@ class UserCreateRequest(BaseModel):
 class User(UserBase):
     id: int
     dogs: List[Dog] = []
-    connects: List[Connected] = []
     tokens: List[RefreshToken] = []
 
     class Config:
