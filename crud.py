@@ -69,8 +69,8 @@ def get_pictures_by_dog(db: Session, dog_id: int) -> list[models.Picture]:
         raise Exception(f"Database error: {str(e)}")
 
 # SenseData CRUD
-def create_sense_data(db: Session, sense_data: schemas.SenseDataCreate, dog_id: int, device_id: int) -> models.SenseData:
-    db_sense_data = models.SenseData(**sense_data.dict(), dogId=dog_id, deviceId=device_id)
+def create_sense_data(db: Session, sense_data: schemas.SenseDataCreate, dog_id: int) -> models.SenseData:
+    db_sense_data = models.SenseData(**sense_data.dict(), dogId=dog_id)
     try:
         db.add(db_sense_data)
         db.commit()
@@ -83,42 +83,6 @@ def create_sense_data(db: Session, sense_data: schemas.SenseDataCreate, dog_id: 
 def get_sense_data_by_dog(db: Session, dog_id: int) -> list[models.SenseData]:
     try:
         return db.query(models.SenseData).filter(models.SenseData.dogId == dog_id).all()
-    except SQLAlchemyError as e:
-        raise Exception(f"Database error: {str(e)}")
-
-# Device CRUD
-def get_device(db: Session, device_id: int) -> models.Device:
-    try:
-        return db.query(models.Device).filter(models.Device.id == device_id).first()
-    except SQLAlchemyError as e:
-        raise Exception(f"Database error: {str(e)}")
-
-def create_device(db: Session, device: schemas.DeviceCreate) -> models.Device:
-    db_device = models.Device(name=device.name)
-    try:
-        db.add(db_device)
-        db.commit()
-        db.refresh(db_device)
-        return db_device
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise Exception(f"Database error: {str(e)}")
-
-# Connected CRUD
-def create_connected(db: Session, connected: schemas.ConnectedCreate) -> models.Connected:
-    db_connected = models.Connected(**connected.dict())
-    try:
-        db.add(db_connected)
-        db.commit()
-        db.refresh(db_connected)
-        return db_connected
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise Exception(f"Database error: {str(e)}")
-
-def get_connected_by_user(db: Session, user_id: int) -> list[models.Connected]:
-    try:
-        return db.query(models.Connected).filter(models.Connected.userId == user_id).all()
     except SQLAlchemyError as e:
         raise Exception(f"Database error: {str(e)}")
 

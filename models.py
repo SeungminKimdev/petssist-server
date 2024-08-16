@@ -47,7 +47,6 @@ class SenseData(Base):
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     dogId = Column(Integer, ForeignKey('dog.id'))
-    deviceId = Column(Integer, ForeignKey('device.id'))
     measureTime = Column(DateTime(timezone=True), nullable=False)
     ax = Column(Integer, nullable=False)
     ay = Column(Integer, nullable=False)
@@ -59,27 +58,6 @@ class SenseData(Base):
     temperature = Column(Float, nullable=False)
 
     dog = relationship('Dog', back_populates='senseDatas')
-    device = relationship('Device', back_populates='datas')
-
-class Device(Base):
-    __tablename__ = 'device'
-    
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    name = Column(String(100), nullable=False)
-    
-    datas = relationship('SenseData', back_populates='device')
-    connects = relationship('Connected', back_populates='device')
-
-class Connected(Base):
-    __tablename__ = 'connected'
-    
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    userId = Column(Integer, ForeignKey('user.id'))
-    deviceId = Column(Integer, ForeignKey('device.id'))
-    connectTime = Column(DateTime(timezone=True), nullable=False)
-
-    user = relationship('User', back_populates='connects')
-    device = relationship('Device', back_populates='connects')
 
 class RefreshToken(Base):
     __tablename__ = 'refreshToken'
