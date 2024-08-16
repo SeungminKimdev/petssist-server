@@ -1,4 +1,3 @@
-
 version: '3.8'
 services:
   fastapi:
@@ -6,7 +5,6 @@ services:
       context: .
       dockerfile: ./Dockerfile
     command: "uvicorn main:app --host 0.0.0.0 --port 8000"
-    image : brad0809/toy-be:latest
     ports:
       - "8000:8000"
     depends_on:
@@ -16,7 +14,7 @@ services:
       - myapp:/app
     restart: always
     environment:
-      - DATABASE_URL= 'postgresql://postgres:examplepassword@db:5432/postgres?schema=public'
+      - DATABASE_URL=postgresql://postgres:examplepassword@db:5432/postgres?schema=public
     env_file:
       - .env
     networks:
@@ -29,7 +27,7 @@ services:
       - POSTGRES_PASSWORD=examplepassword
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mainproject_postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     restart: always
@@ -42,8 +40,8 @@ services:
       retries: 5
 
 volumes:
-  postgres_data:
-    name: postgres_data
+  mainproject_postgres_data:
+    name: mainproject_postgres_data
   myapp:
 
 networks:

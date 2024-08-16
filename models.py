@@ -12,7 +12,6 @@ class User(Base):
     name = Column(String(30), unique=True, nullable=False)
     
     dogs = relationship('Dog', back_populates='user')
-    connects = relationship('Connected', back_populates='user')
     tokens = relationship('RefreshToken', back_populates='user')
 
 class Dog(Base):
