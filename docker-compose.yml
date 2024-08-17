@@ -14,7 +14,7 @@ services:
       - myapp:/app
     restart: always
     environment:
-      - DATABASE_URL=postgresql://postgres:examplepassword@db:5432/postgres?schema=public
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public
     env_file:
       - .env
     networks:
@@ -24,9 +24,11 @@ services:
     image: postgres:15
     container_name: postgres
     environment:
-      - POSTGRES_PASSWORD=examplepassword
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
       - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - mainproject_postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
