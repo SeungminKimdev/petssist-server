@@ -24,4 +24,4 @@ app.include_router(api_router)
 
 @app.get("/")
 async def main():
-    return {"message":"Connected"}
+    return {"message":"Connect successfully"}
