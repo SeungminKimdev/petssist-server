@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, status, Header, Body, File, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from routers.auth import verify_and_refresh_token, decode_access_token
@@ -254,6 +254,53 @@ async def get_dog_info(accessToken: str = Header(...), db: Session = Depends(get
 
     except Exception as e:
         logger.error(f"Error fetching dog information: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 강아지 사진 가져오기
+@router.get("/dogs/photos", response_class=FileResponse)
+async def get_dog_photo(accessToken: str = Header(...), db: Session = Depends(get_db)):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errorMessage": result}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+            
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+        
+        # 사진 정보 가져오기
+        existing_photo = get_pictures_by_dog(db, dog.id)
+        if not existing_photo or not os.path.exists(existing_photo.photoPath):
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"errorMessage": "Photo not found"}
+            )
+
+        # 사진 파일 반환
+        headers = {"accessToken": result}
+        return FileResponse(path=existing_photo.photoPath, media_type=existing_photo.contentType, headers=headers)
+
+    except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"}
