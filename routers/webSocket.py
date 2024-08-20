@@ -18,7 +18,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
     try:
         # 첫 번째 메시지에서 액세스 토큰을 수신
         data = await websocket.receive_json()
-        accessToken = data.get("accesstoken")
+        accessToken = data.get("accessToken")
 
         # 토큰 검증
         is_valid, result = verify_and_refresh_token(db, accessToken)

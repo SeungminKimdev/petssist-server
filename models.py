@@ -9,7 +9,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     loginId = Column(String(30), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
-    name = Column(String(30), unique=True, nullable=False)
+    name = Column(String(30), nullable=False)
     
     dogs = relationship('Dog', back_populates='user')
     tokens = relationship('RefreshToken', back_populates='user')
