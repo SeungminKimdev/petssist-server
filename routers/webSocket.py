@@ -11,6 +11,16 @@ import json
 
 router = APIRouter()
 
+# 모델 함수 - 동욱님 코드
+async def run_first_model(input_data):
+    # 모델 로직
+    return True
+
+# 모델 함수 (수면 중일 때 실행) - 예인님 코드
+async def run_second_model(input_data):
+    # PyTorch 모델 로직
+    return True
+
 @router.websocket("/wsbt")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
     await websocket.accept()
@@ -59,7 +69,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                     gx=sensor_data["gx"],
                     gy=sensor_data["gy"],
                     gz=sensor_data["gz"],
-                    temperature=sensor_data["temperature"],
+                    temperature=sensor_data["temperature"]
                 )
                 create_sense_data(db, sensor_data_obj, dog.id)
 

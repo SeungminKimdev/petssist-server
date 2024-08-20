@@ -68,3 +68,28 @@ class RefreshToken(Base):
     expiresAt = Column(DateTime(timezone=True), nullable=False)
 
     user = relationship('User', back_populates='tokens')
+
+class Sequence(Base):
+    __tablename__ = 'sequence'
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    dogId = Column(Integer, ForeignKey('dog.id'))
+    startTime = Column(DateTime(timezone=True), nullable=False)
+    endTime = Column(DateTime(timezone=True), nullable=False)
+    intentsity = Column(Integer, nullable=False)
+    excercise = Column(Float, nullable=False)
+    anomoly = Column(Integer, nullable=False)
+    
+    dog = relationship('Dog', back_populates='sequences')
+    bcgdatas = relationship('Bcgdata', back_populates='sequence')
+
+class Bcgdata(Base):
+    __annotations__ = 'bcgData'
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    sequenceId = Column(Integer, ForeignKey('sequence.id')) 
+    measureTime = Column(DateTime(timezone=True), nullable=False)
+    heart = Column(Integer, nullable=False)
+    respiration = Column(Integer, nullable=False)
+    
+    sequence = relationship('Sequence', back_populates='bcgdatas')
