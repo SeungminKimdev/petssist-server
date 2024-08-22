@@ -31,6 +31,7 @@ class Dog(Base):
     senseDatas = relationship('SenseData', back_populates='dog')
     targetExercise = relationship('TargetExercise', back_populates='dog')
     exerciseLogs = relationship('ExerciseLog', back_populates='dog')
+    sequences = relationship('Sequence', back_populates='dog')
 
 class Picture(Base):
     __tablename__ = 'picture'
@@ -88,7 +89,7 @@ class Sequence(Base):
     bcgdatas = relationship('Bcgdata', back_populates='sequence')
 
 class Bcgdata(Base):
-    __annotations__ = 'bcgData'
+    __tablename__ = 'bcgData'
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     sequenceId = Column(Integer, ForeignKey('sequence.id')) 
