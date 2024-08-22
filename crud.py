@@ -50,6 +50,12 @@ def get_dog_by_user(db: Session, user_id: int) -> list[models.Dog]:
     except SQLAlchemyError as e:
         raise Exception(f"Database error: {str(e)}")
 
+def get_dog_weight_by_user(db: Session, user_id: int) -> list[float]:
+    try:
+        return db.query(models.Dog.weight).filter(models.Dog.userId == user_id).all()
+    except SQLAlchemyError as e:
+        raise Exception(f"Database error: {str(e)}")
+
 # Picture CRUD
 def create_picture(db: Session, picture: schemas.PictureCreate, dog_id: int) -> models.Picture:
     db_picture = models.Picture(**picture.dict(), dogId=dog_id)
@@ -117,3 +123,47 @@ def get_refresh_token_by_user(db: Session, user_id: int) -> models.RefreshToken:
         return db.query(models.RefreshToken).filter(models.RefreshToken.userId == user_id).first()
     except SQLAlchemyError as e:
         raise Exception(f"Database error: {str(e)}")
+
+# Sequence CRUD
+def create_sequence(db: Session, sequence: schemas.SequenceCreate) -> models.Sequence:
+    db_sequence = models.Sequence(**sequence.dict())
+    db.add(db_sequence)
+    db.commit()
+    db.refresh(db_sequence)
+    return db_sequence
+
+def get_sequence(db: Session, sequence_id: int) -> models.Sequence:
+    return db.query(models.Sequence).filter(models.Sequence.id == sequence_id).first()
+
+def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
+    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).all()
+
+# Bcgdata CRUD
+def create_bcgdata(db: Session, bcgdata: schemas.BcgdataCreate) -> models.Bcgdata:
+    db_bcgdata = models.Bcgdata(**bcgdata.dict())
+    db.add(db_bcgdata)
+    db.commit()
+    db.refresh(db_bcgdata)
+    return db_bcgdata
+
+def get_bcgdata_by_sequence(db: Session, sequence_id: int) -> list[models.Bcgdata]:
+    return db.query(models.Bcgdata).filter(models.Bcgdata.sequenceId == sequence_id).all()
+
+# TargetExercise CRUD
+def create_target_exercise(db: Session, target_exercise: schemas.TargetExerciseCreate) -> models.TargetExercise:
+    db_target_exercise = models.TargetExercise(**target_exercise.dict())
+    db.add(db_target_exercise)
+    db.commit()
+    db.refresh(db_target_exercise)
+    return db_target_exercise
+
+def get_target_exercise(db: Session, dog_id: int) -> models.TargetExercise:
+    return db.query(models.TargetExercise).filter(models.TargetExercise.dogId == dog_id).first()
+
+def update_target_exercise(db: Session, dog_id: int, today: int) -> models.TargetExercise:
+    target_exercise = get_target_exercise(db, dog_id)
+    if target_exercise:
+        target_exercise.today = today
+        db.commit()
+        db.refresh(target_exercise)
+    return target_exercise

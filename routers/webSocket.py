@@ -6,10 +6,13 @@ from core.security import decode_access_token
 from database import get_db
 from routers.auth import verify_and_refresh_token
 from schemas import SenseDataCreate
-from crud import create_sense_data, get_user_by_loginId, get_dog_by_user
+from crud import create_sense_data, get_user_by_loginId, get_dog_by_user, get_dog_weight_by_user
 import json
 
 router = APIRouter()
+
+sensorDataBuffer = []
+bufferSize = 0
 
 # 모델 함수 - 동욱님 코드
 async def run_first_model(input_data):
@@ -20,6 +23,22 @@ async def run_first_model(input_data):
 async def run_second_model(input_data):
     # PyTorch 모델 로직
     return True
+
+# 센서 데이터를 데이터베이스에 저장
+async def upload_sense_data(db, dog_id, sense_data_list):
+    for sense_data in sense_data_list:
+        sensor_data_obj = SenseDataCreate(
+                measureTime=sense_data["time"],
+                ax=sense_data["ax"],
+                ay=sense_data["ay"],
+                az=sense_data["az"],
+                bcg=sense_data["bcg"],
+                gx=sense_data["gx"],
+                gy=sense_data["gy"],
+                gz=sense_data["gz"],
+                temperature=sense_data["temperature"]
+            )
+        create_sense_data(db, sensor_data_obj, dog_id)
 
 @router.websocket("/wsbt")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
@@ -49,7 +68,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
             await websocket.send_json({"auth_success": False, "message": "Dog information does not exist", "accessToken": result})
             await websocket.close()
             return
-
+        
         # 인증 후 수신된 데이터 처리
         while True:
             data = await websocket.receive_json()
@@ -57,24 +76,20 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
 
             if not sensor_data_list:
                 continue
+            await upload_sense_data(db, dog.id, sensor_data_list)
+            sensorDataBuffer.extend(sensor_data_list)
+            bufferSize += 7
+            if bufferSize >= 560:
+                modelInputData = sensorDataBuffer[:560]
+                # 첫 번째 모델 실행
 
-            # 센서 데이터를 데이터베이스에 저장
-            for sensor_data in sensor_data_list:
-                sensor_data_obj = SenseDataCreate(
-                    measureTime=sensor_data["time"],
-                    ax=sensor_data["ax"],
-                    ay=sensor_data["ay"],
-                    az=sensor_data["az"],
-                    bcg=sensor_data["bcg"],
-                    gx=sensor_data["gx"],
-                    gy=sensor_data["gy"],
-                    gz=sensor_data["gz"],
-                    temperature=sensor_data["temperature"]
-                )
-                create_sense_data(db, sensor_data_obj, dog.id)
+                if True:
+                    # 두 번째 모델 실행
+                    await print('temp')
 
-            # 센서 데이터 처리 (여기서 임의로 데이터를 생성하여 반환)
-            
+                # 데이터 버퍼 갱신
+                sensorDataBuffer = sensorDataBuffer[280:]
+                bufferSize -= 280
 
             # 응답 전송
             await websocket.send_json({"message": "Data received successfully"})

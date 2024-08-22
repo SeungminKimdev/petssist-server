@@ -29,6 +29,7 @@ class Dog(Base):
     user = relationship('User', back_populates='dogs')
     pictures = relationship('Picture', back_populates='dog')
     senseDatas = relationship('SenseData', back_populates='dog')
+    targetExercise = relationship('TargetExercise', back_populates='dog')
 
 class Picture(Base):
     __tablename__ = 'picture'
@@ -78,7 +79,9 @@ class Sequence(Base):
     endTime = Column(DateTime(timezone=True), nullable=False)
     intentsity = Column(Integer, nullable=False)
     excercise = Column(Float, nullable=False)
-    anomoly = Column(Integer, nullable=False)
+    heartAnomoly = Column(Integer, nullable=False)
+    heartRate = Column(Integer, nullable=False)
+    respirationRate = Column(Integer, nullable=False)
     
     dog = relationship('Dog', back_populates='sequences')
     bcgdatas = relationship('Bcgdata', back_populates='sequence')
@@ -93,3 +96,13 @@ class Bcgdata(Base):
     respiration = Column(Integer, nullable=False)
     
     sequence = relationship('Sequence', back_populates='bcgdatas')
+
+class TargetExercise(Base):
+    __tablename__ = 'targetExercise'
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    dogId = Column(Integer, ForeignKey('dog.id'))
+    target = Column(Integer, nullable=False)
+    today = Column(Integer, nullable=False)
+    
+    dog = relationship('Dog', back_populates='targetExercise')
