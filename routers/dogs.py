@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from routers.auth import verify_and_refresh_token, decode_access_token
-from crud import create_dog, get_user_by_loginId, create_picture, get_pictures_by_dog, get_dog_by_user
+from crud import create_dog, get_user_by_loginId, create_picture, get_pictures_by_dog, get_dog_by_user, get_sequences_by_dog, get_bcgdata_by_sequence, get_user_by_loginId
 from schemas import DogCreate, PictureCreate
 import logging
 from pydantic import ValidationError
@@ -301,6 +301,67 @@ async def get_dog_photo(accessToken: str = Header(...), db: Session = Depends(ge
         return FileResponse(path=existing_photo.photoPath, media_type=existing_photo.contentType, headers=headers)
 
     except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 심박값 데이터 전송
+@router.get("/hearts", status_code=status.HTTP_200_OK)
+async def get_heart_data(accessToken: str = Header(...), db: Session = Depends(get_db)):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errormessage": "Invalid token"}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+
+        # 사용자에 해당하는 강아지 정보 조회
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+
+        # 최신 시퀀스 정보 조회
+        sequences = get_sequences_by_dog(db, dog.id)
+        if not sequences:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Sequence information does not exist"}
+            )
+        
+        latest_sequence = sequences[-1]  # 가장 최신 시퀀스
+
+        # intensity 값에 따른 데이터 처리
+        bcg_data = get_bcgdata_by_sequence(db, latest_sequence.id)
+        bcg_data_list = [
+            {"time": data.measureTime, "heart": data.heart} for data in bcg_data
+        ]
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "intensity": latest_sequence.intentsity,
+                "bcgData": bcg_data_list
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching heart data: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"}

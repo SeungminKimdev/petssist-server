@@ -185,3 +185,11 @@ def get_exercise_logs_by_dog(db: Session, dog_id: int) -> list[models.ExerciseLo
 def delete_exercise_log(db: Session, log_id: int):
     db.query(models.ExerciseLog).filter(models.ExerciseLog.id == log_id).delete()
     db.commit()
+
+# 특정 강아지의 모든 시퀀스를 조회하는 함수
+def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
+    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).order_by(models.Sequence.startTime.desc()).all()
+
+# 특정 시퀀스와 연관된 BCG 데이터를 조회하는 함수
+def get_bcgdata_by_sequence(db: Session, sequence_id: int) -> list[models.Bcgdata]:
+    return db.query(models.Bcgdata).filter(models.Bcgdata.sequenceId == sequence_id).order_by(models.Bcgdata.measureTime.asc()).all()
