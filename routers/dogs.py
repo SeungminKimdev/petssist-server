@@ -3,8 +3,9 @@ from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from routers.auth import verify_and_refresh_token, decode_access_token
-from crud import create_dog, get_user_by_loginId, create_picture, get_pictures_by_dog, get_dog_by_user, get_sequences_by_dog, get_bcgdata_by_sequence, get_user_by_loginId
-from schemas import DogCreate, PictureCreate
+from crud import create_dog, get_user_by_loginId, create_picture, get_pictures_by_dog, get_dog_by_user, create_target_exercise
+from crud import get_sequences_by_dog, get_bcgdata_by_sequence, get_user_by_loginId, get_dog_by_user, get_target_exercise
+from schemas import DogCreate, PictureCreate, TargetExerciseCreate
 import logging
 from pydantic import ValidationError
 import shutil
@@ -50,17 +51,32 @@ async def add_dog(request: Request, accessToken: str = Header(...), db: Session 
         
         # 강아지 정보 생성
         db_dog = create_dog(db, dog, db_user.id)
-        if db_dog:
-            return JSONResponse(
-                status_code=status.HTTP_201_CREATED,
-                content={"message": "Dog information added successfully"},
-                headers={"accessToken": result}
-            )
-        else:
+        if not db_dog:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"errorMessage": "Server error"}
             )
+        
+        # 운동 목표량 정보 생성
+        try:
+            target_exercise = TargetExerciseCreate(
+                dogId=db_dog.id,
+                target=60,  # 기본 목표 운동량 설정 (예: 60분)
+                today=0     # 오늘 운동량 초기화
+            )
+            create_target_exercise(db, target_exercise)
+        except Exception as e:
+            logger.error(f"Error creating target exercise: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Error creating target exercise"}
+            )
+        
+        return JSONResponse(
+                status_code=status.HTTP_201_CREATED,
+                content={"message": "Dog information added successfully"},
+                headers={"accessToken": result}
+        )
     except Exception as e:
         logger.error(f"Error adding dog: {e}")
         return JSONResponse(
@@ -362,6 +378,59 @@ async def get_heart_data(accessToken: str = Header(...), db: Session = Depends(g
 
     except Exception as e:
         logger.error(f"Error fetching heart data: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 운동 목표량 정보 전송
+@router.get("/exercise", status_code=status.HTTP_200_OK)
+async def get_exercise_data(accessToken: str = Header(...), db: Session = Depends(get_db)):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errormessage": "Invalid token"}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+
+        # 사용자에 해당하는 강아지 정보 조회
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+
+        # TargetExercise 정보 조회
+        target_exercise = get_target_exercise(db, dog.id)
+        if not target_exercise:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Target exercise information does not exist"}
+            )
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "target": target_exercise.target,
+                "today": target_exercise.today
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching exercise data: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"}
