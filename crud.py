@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 import models, schemas
 from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime
 
 # User CRUD
 def get_user(db: Session, user_id: int) -> models.User:
@@ -193,3 +195,12 @@ def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
 # 특정 시퀀스와 연관된 BCG 데이터를 조회하는 함수
 def get_bcgdata_by_sequence(db: Session, sequence_id: int) -> list[models.Bcgdata]:
     return db.query(models.Bcgdata).filter(models.Bcgdata.sequenceId == sequence_id).order_by(models.Bcgdata.measureTime.asc()).all()
+
+def get_sequences_within_last_hour(db: Session, dog_id: int, start_time: datetime, end_time: datetime) -> list[models.Sequence]:
+    return db.query(models.Sequence).filter(
+        and_(
+            models.Sequence.dogId == dog_id,
+            models.Sequence.startTime >= start_time,
+            models.Sequence.endTime <= end_time
+        )
+    ).order_by(models.Sequence.startTime.asc()).all()
