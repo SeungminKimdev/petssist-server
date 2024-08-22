@@ -128,7 +128,7 @@ async def upload_dog_photo(accessToken: str = Header(...), db: Session = Depends
                 os.remove(existing_photo.photoPath)
 
             # 새 파일 경로 생성
-            photo_path = f"photos/{db_user.name}_profile"
+            photo_path = f"photos/{dog.id}_profile"
             with open(photo_path, "wb") as buffer:
                 shutil.copyfileobj(image.file, buffer)
 
@@ -140,7 +140,7 @@ async def upload_dog_photo(accessToken: str = Header(...), db: Session = Depends
 
         else:
             # 사진 정보 데이터베이스에 저장 (새 사진)
-            photo_path = f"photos/{db_user.name}_profile"
+            photo_path = f"photos/{dog.id}_profile"
             with open(photo_path, "wb") as buffer:
                 shutil.copyfileobj(image.file, buffer)
             
