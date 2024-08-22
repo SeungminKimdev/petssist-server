@@ -7,6 +7,7 @@ from database import get_db
 from routers.auth import verify_and_refresh_token
 from schemas import SenseDataCreate
 from crud import create_sense_data, get_user_by_loginId, get_dog_by_user, get_dog_weight_by_user
+from models import Sequence, Bcgdata
 import json
 
 router = APIRouter()
@@ -15,14 +16,28 @@ sensorDataBuffer = []
 bufferSize = 0
 
 # 모델 함수 - 동욱님 코드
-async def run_first_model(input_data):
+async def run_first_model(db, dogId, websocket, input_data):
     # 모델 로직
-    return True
+    # 모델 함수 (수면 중일 때 실행) - 예인님 코드
+    async def run_second_model(input_data):
+        # PyTorch 모델 로직
+        return True
+    
+    sequenceData = Sequence()
+    bcgData = Bcgdata()
+    if bool(sequenceData.heartAnomoly): # 심박 이상치 발견
+        bcgHeart = [{"time": bcg.time, "heart": bcg.heart} for bcg in bcgData]
+    else:
+        bcgHeart = []
+    # sequence 데이터와 bcg 데이터를 클라이언트로 전송
+    await websocket.send_json({"heartRate": sequenceData.heartRate,
+                               "respirationRate":sequenceData.respirationRate,
+                               "heartAnomoly":bool(sequenceData.heartAnomoly),
+                               "senseData":bcgHeart
+                              })
+    return
 
-# 모델 함수 (수면 중일 때 실행) - 예인님 코드
-async def run_second_model(input_data):
-    # PyTorch 모델 로직
-    return True
+
 
 # 센서 데이터를 데이터베이스에 저장
 async def upload_sense_data(db, dog_id, sense_data_list):
@@ -81,18 +96,13 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
             bufferSize += 7
             if bufferSize >= 560:
                 modelInputData = sensorDataBuffer[:560]
-                # 첫 번째 모델 실행
 
-                if True:
-                    # 두 번째 모델 실행
-                    await print('temp')
+                # 모델 실행
+                await run_first_model(db, dog.id, websocket, modelInputData)
 
                 # 데이터 버퍼 갱신
                 sensorDataBuffer = sensorDataBuffer[280:]
                 bufferSize -= 280
-
-            # 응답 전송
-            await websocket.send_json({"message": "Data received successfully"})
 
     except WebSocketDisconnect:
         print("Client disconnected")

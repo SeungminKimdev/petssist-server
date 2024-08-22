@@ -60,9 +60,16 @@ async def add_dog(request: Request, accessToken: str = Header(...), db: Session 
         
         # 운동 목표량 정보 생성
         try:
+            targetNum = 0
+            if db_dog.breedCategory == 3: # 대형견
+                targetNum = db_dog.weight * 2700
+            elif db_dog.breedCategory == 2: # 중형견
+                targetNum = db_dog.weight * 2790
+            else: # 소형견
+                targetNum = db_dog.weight * 2700
             target_exercise = TargetExerciseCreate(
                 dogId=db_dog.id,
-                target=60,  # 기본 목표 운동량 설정 (예: 60분)
+                target=targetNum,  # 기본 목표 운동량 설정 (예: 60분)
                 today=0     # 오늘 운동량 초기화
             )
             create_target_exercise(db, target_exercise)
