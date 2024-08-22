@@ -30,6 +30,7 @@ class Dog(Base):
     pictures = relationship('Picture', back_populates='dog')
     senseDatas = relationship('SenseData', back_populates='dog')
     targetExercise = relationship('TargetExercise', back_populates='dog')
+    exerciseLogs = relationship('ExerciseLog', back_populates='dog')
 
 class Picture(Base):
     __tablename__ = 'picture'
@@ -106,3 +107,13 @@ class TargetExercise(Base):
     today = Column(Integer, nullable=False)
     
     dog = relationship('Dog', back_populates='targetExercise')
+
+class ExerciseLog(Base):
+    __tablename__ = 'exerciseLog'
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    dogId = Column(Integer, ForeignKey('dog.id'))
+    date = Column(DateTime(timezone=True), nullable=False)
+    exercise = Column(Integer, nullable=False)
+    
+    dog = relationship('Dog', back_populates='exerciseLogs')

@@ -167,3 +167,21 @@ def update_target_exercise(db: Session, dog_id: int, today: int) -> models.Targe
         db.commit()
         db.refresh(target_exercise)
     return target_exercise
+
+# ExerciseLog CRUD
+def create_exercise_log(db: Session, exercise_log: schemas.ExerciseLogCreate) -> models.ExerciseLog:
+    db_exercise_log = models.ExerciseLog(**exercise_log.dict())
+    db.add(db_exercise_log)
+    db.commit()
+    db.refresh(db_exercise_log)
+    return db_exercise_log
+
+def get_exercise_log(db: Session, log_id: int) -> models.ExerciseLog:
+    return db.query(models.ExerciseLog).filter(models.ExerciseLog.id == log_id).first()
+
+def get_exercise_logs_by_dog(db: Session, dog_id: int) -> list[models.ExerciseLog]:
+    return db.query(models.ExerciseLog).filter(models.ExerciseLog.dogId == dog_id).all()
+
+def delete_exercise_log(db: Session, log_id: int):
+    db.query(models.ExerciseLog).filter(models.ExerciseLog.id == log_id).delete()
+    db.commit()
