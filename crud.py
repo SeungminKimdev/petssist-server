@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 import models, schemas
 from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime
 
 # User CRUD
 def get_user(db: Session, user_id: int) -> models.User:
@@ -47,6 +49,12 @@ def create_dog(db: Session, dog: schemas.DogCreate, user_id: int) -> models.Dog:
 def get_dog_by_user(db: Session, user_id: int) -> list[models.Dog]:
     try:
         return db.query(models.Dog).filter(models.Dog.userId == user_id).first()
+    except SQLAlchemyError as e:
+        raise Exception(f"Database error: {str(e)}")
+
+def get_dog_weight_by_user(db: Session, user_id: int) -> list[float]:
+    try:
+        return db.query(models.Dog.weight).filter(models.Dog.userId == user_id).all()
     except SQLAlchemyError as e:
         raise Exception(f"Database error: {str(e)}")
 
@@ -117,3 +125,82 @@ def get_refresh_token_by_user(db: Session, user_id: int) -> models.RefreshToken:
         return db.query(models.RefreshToken).filter(models.RefreshToken.userId == user_id).first()
     except SQLAlchemyError as e:
         raise Exception(f"Database error: {str(e)}")
+
+# Sequence CRUD
+def create_sequence(db: Session, sequence: schemas.SequenceCreate) -> models.Sequence:
+    db_sequence = models.Sequence(**sequence.dict())
+    db.add(db_sequence)
+    db.commit()
+    db.refresh(db_sequence)
+    return db_sequence
+
+def get_sequence(db: Session, sequence_id: int) -> models.Sequence:
+    return db.query(models.Sequence).filter(models.Sequence.id == sequence_id).first()
+
+def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
+    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).all()
+
+# Bcgdata CRUD
+def create_bcgdata(db: Session, bcgdata: schemas.BcgdataCreate) -> models.Bcgdata:
+    db_bcgdata = models.Bcgdata(**bcgdata.dict())
+    db.add(db_bcgdata)
+    db.commit()
+    db.refresh(db_bcgdata)
+    return db_bcgdata
+
+def get_bcgdata_by_sequence(db: Session, sequence_id: int) -> list[models.Bcgdata]:
+    return db.query(models.Bcgdata).filter(models.Bcgdata.sequenceId == sequence_id).all()
+
+# TargetExercise CRUD
+def create_target_exercise(db: Session, target_exercise: schemas.TargetExerciseCreate) -> models.TargetExercise:
+    db_target_exercise = models.TargetExercise(**target_exercise.dict())
+    db.add(db_target_exercise)
+    db.commit()
+    db.refresh(db_target_exercise)
+    return db_target_exercise
+
+def get_target_exercise(db: Session, dog_id: int) -> models.TargetExercise:
+    return db.query(models.TargetExercise).filter(models.TargetExercise.dogId == dog_id).first()
+
+def update_target_exercise(db: Session, dog_id: int, today: int) -> models.TargetExercise:
+    target_exercise = get_target_exercise(db, dog_id)
+    if target_exercise:
+        target_exercise.today = today
+        db.commit()
+        db.refresh(target_exercise)
+    return target_exercise
+
+# ExerciseLog CRUD
+def create_exercise_log(db: Session, exercise_log: schemas.ExerciseLogCreate) -> models.ExerciseLog:
+    db_exercise_log = models.ExerciseLog(**exercise_log.dict())
+    db.add(db_exercise_log)
+    db.commit()
+    db.refresh(db_exercise_log)
+    return db_exercise_log
+
+def get_exercise_log(db: Session, log_id: int) -> models.ExerciseLog:
+    return db.query(models.ExerciseLog).filter(models.ExerciseLog.id == log_id).first()
+
+def get_exercise_logs_by_dog(db: Session, dog_id: int) -> list[models.ExerciseLog]:
+    return db.query(models.ExerciseLog).filter(models.ExerciseLog.dogId == dog_id).all()
+
+def delete_exercise_log(db: Session, log_id: int):
+    db.query(models.ExerciseLog).filter(models.ExerciseLog.id == log_id).delete()
+    db.commit()
+
+# 특정 강아지의 모든 시퀀스를 조회하는 함수
+def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
+    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).order_by(models.Sequence.startTime.desc()).all()
+
+# 특정 시퀀스와 연관된 BCG 데이터를 조회하는 함수
+def get_bcgdata_by_sequence(db: Session, sequence_id: int) -> list[models.Bcgdata]:
+    return db.query(models.Bcgdata).filter(models.Bcgdata.sequenceId == sequence_id).order_by(models.Bcgdata.measureTime.asc()).all()
+
+def get_sequences_within_last_hour(db: Session, dog_id: int, start_time: datetime, end_time: datetime) -> list[models.Sequence]:
+    return db.query(models.Sequence).filter(
+        and_(
+            models.Sequence.dogId == dog_id,
+            models.Sequence.startTime >= start_time,
+            models.Sequence.endTime <= end_time
+        )
+    ).order_by(models.Sequence.startTime.asc()).all()
