@@ -96,6 +96,7 @@ class Bcgdata(Base):
     measureTime = Column(DateTime(timezone=True), nullable=False)
     heart = Column(Float, nullable=False)
     respiration = Column(Float, nullable=False)
+
     
     sequence = relationship('Sequence', back_populates='bcgdatas')
 

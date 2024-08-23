@@ -92,6 +92,8 @@ async def run_first_model(db, dog, websocket, input_datas):
                               })
     return
 
+
+
 # 센서 데이터를 데이터베이스에 저장
 async def upload_sense_data(db, dog_id, sense_data_list):
     for sense_data in sense_data_list:
@@ -154,6 +156,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
 
                 # 모델 실행
                 await run_first_model(db, dog, websocket, modelInputDatas)
+
 
                 # 데이터 버퍼 갱신
                 sensorDataBuffer = sensorDataBuffer[280:]
