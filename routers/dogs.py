@@ -373,7 +373,7 @@ async def get_heart_data(accessToken: str = Header(...), db: Session = Depends(g
         # intensity 값에 따른 데이터 처리
         bcg_data = get_bcgdata_by_sequence(db, latest_sequence.id)
         bcg_data_list = [
-            {"time": data.measureTime, "heart": data.heart} for data in bcg_data
+            {"time": data.measureTime.timestamp(), "heart": data.heart} for data in bcg_data
         ]
 
         return JSONResponse(
