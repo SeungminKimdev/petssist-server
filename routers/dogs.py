@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, status, Header, Body, File, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from routers.auth import verify_and_refresh_token, decode_access_token
-from crud import create_dog, get_user_by_loginId, create_picture, get_pictures_by_dog, get_dog_by_user
-from schemas import DogCreate, PictureCreate
+from crud import create_dog, get_user_by_loginId, create_picture, get_pictures_by_dog, get_dog_by_user, create_target_exercise
+from crud import get_sequences_by_dog, get_bcgdata_by_sequence, get_user_by_loginId, get_dog_by_user, get_target_exercise, get_sequences_within_last_hour
+from schemas import DogCreate, PictureCreate, TargetExerciseCreate
+from datetime import datetime, timedelta
 import logging
 from pydantic import ValidationError
 import shutil
@@ -50,17 +52,39 @@ async def add_dog(request: Request, accessToken: str = Header(...), db: Session 
         
         # 강아지 정보 생성
         db_dog = create_dog(db, dog, db_user.id)
-        if db_dog:
-            return JSONResponse(
-                status_code=status.HTTP_201_CREATED,
-                content={"message": "Dog information added successfully"},
-                headers={"accessToken": result}
-            )
-        else:
+        if not db_dog:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"errorMessage": "Server error"}
             )
+        
+        # 운동 목표량 정보 생성
+        try:
+            targetNum = 0
+            if db_dog.breedCategory == 3: # 대형견
+                targetNum = db_dog.weight * 2700
+            elif db_dog.breedCategory == 2: # 중형견
+                targetNum = db_dog.weight * 2790
+            else: # 소형견
+                targetNum = db_dog.weight * 2700
+            target_exercise = TargetExerciseCreate(
+                dogId=db_dog.id,
+                target=targetNum,  # 기본 목표 운동량 설정 (예: 60분)
+                today=0     # 오늘 운동량 초기화
+            )
+            create_target_exercise(db, target_exercise)
+        except Exception as e:
+            logger.error(f"Error creating target exercise: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Error creating target exercise"}
+            )
+        
+        return JSONResponse(
+                status_code=status.HTTP_201_CREATED,
+                content={"message": "Dog information added successfully"},
+                headers={"accessToken": result}
+        )
     except Exception as e:
         logger.error(f"Error adding dog: {e}")
         return JSONResponse(
@@ -104,7 +128,7 @@ async def upload_dog_photo(accessToken: str = Header(...), db: Session = Depends
                 os.remove(existing_photo.photoPath)
 
             # 새 파일 경로 생성
-            photo_path = f"photos/{db_user.name}_profile"
+            photo_path = f"photos/{dog.id}_profile"
             with open(photo_path, "wb") as buffer:
                 shutil.copyfileobj(image.file, buffer)
 
@@ -116,7 +140,7 @@ async def upload_dog_photo(accessToken: str = Header(...), db: Session = Depends
 
         else:
             # 사진 정보 데이터베이스에 저장 (새 사진)
-            photo_path = f"photos/{db_user.name}_profile"
+            photo_path = f"photos/{dog.id}_profile"
             with open(photo_path, "wb") as buffer:
                 shutil.copyfileobj(image.file, buffer)
             
@@ -254,6 +278,232 @@ async def get_dog_info(accessToken: str = Header(...), db: Session = Depends(get
 
     except Exception as e:
         logger.error(f"Error fetching dog information: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 강아지 사진 가져오기
+@router.get("/dogs/photos", response_class=FileResponse)
+async def get_dog_photo(accessToken: str = Header(...), db: Session = Depends(get_db)):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errorMessage": result}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+            
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+        
+        # 사진 정보 가져오기
+        existing_photo = get_pictures_by_dog(db, dog.id)
+        if not existing_photo or not os.path.exists(existing_photo.photoPath):
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"errorMessage": "Photo not found"}
+            )
+
+        # 사진 파일 반환
+        headers = {"accessToken": result}
+        return FileResponse(path=existing_photo.photoPath, media_type=existing_photo.contentType, headers=headers)
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 심박값 데이터 전송
+@router.get("/hearts", status_code=status.HTTP_200_OK)
+async def get_heart_data(accessToken: str = Header(...), db: Session = Depends(get_db)):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errormessage": "Invalid token"}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+
+        # 사용자에 해당하는 강아지 정보 조회
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+
+        # 최신 시퀀스 정보 조회
+        sequences = get_sequences_by_dog(db, dog.id)
+        if not sequences:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Sequence information does not exist"}
+            )
+        
+        latest_sequence = sequences[-1]  # 가장 최신 시퀀스
+
+        # intensity 값에 따른 데이터 처리
+        bcg_data = get_bcgdata_by_sequence(db, latest_sequence.id)
+        bcg_data_list = [
+            {"time": data.measureTime, "heart": data.heart} for data in bcg_data
+        ]
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "intensity": latest_sequence.intentsity,
+                "bcgData": bcg_data_list
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching heart data: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 운동 목표량 정보 전송
+@router.get("/exercise", status_code=status.HTTP_200_OK)
+async def get_exercise_data(accessToken: str = Header(...), db: Session = Depends(get_db)):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errormessage": "Invalid token"}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+
+        # 사용자에 해당하는 강아지 정보 조회
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+
+        # TargetExercise 정보 조회
+        target_exercise = get_target_exercise(db, dog.id)
+        if not target_exercise:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Target exercise information does not exist"}
+            )
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "target": target_exercise.target,
+                "today": target_exercise.today
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching exercise data: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"errorMessage": "Server error"}
+        )
+
+# 1시간 시퀀스 데이터 전송
+@router.get("/sequences", status_code=status.HTTP_200_OK)
+async def get_sequences(accessToken: str = Header(...), db: Session = Depends(get_db)):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"errormessage": "Invalid token"}
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"errorMessage": "Server error"}
+            )
+
+        # 사용자에 해당하는 강아지 정보 조회
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Dog information does not exist"}
+            )
+
+        # 현재 시간으로부터 1시간 내의 시퀀스 정보 조회
+        now = datetime.utcnow()
+        one_hour_ago = now - timedelta(hours=1)
+        sequences = get_sequences_within_last_hour(db, dog.id, one_hour_ago, now)
+        
+        if not sequences:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"errorMessage": "Sequence information does not exist"}
+            )
+
+        sequence_datas = [
+            {
+                "startTime": sequence.startTime,
+                "endTime": sequence.endTime,
+                "intensity": sequence.intentsity,
+                "heartAnomoly": bool(sequence.heartAnomoly),
+                "heartRate": sequence.heartRate,
+                "respirationRate": sequence.respirationRate,
+            }
+            for sequence in sequences
+        ]
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"sequenceDatas": sequence_datas}
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching sequences: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"}

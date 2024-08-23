@@ -9,10 +9,9 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     loginId = Column(String(30), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
-    name = Column(String(30), unique=True, nullable=False)
+    name = Column(String(30), nullable=False)
     
     dogs = relationship('Dog', back_populates='user')
-    connects = relationship('Connected', back_populates='user')
     tokens = relationship('RefreshToken', back_populates='user')
 
 class Dog(Base):
@@ -30,6 +29,9 @@ class Dog(Base):
     user = relationship('User', back_populates='dogs')
     pictures = relationship('Picture', back_populates='dog')
     senseDatas = relationship('SenseData', back_populates='dog')
+    targetExercise = relationship('TargetExercise', back_populates='dog')
+    exerciseLogs = relationship('ExerciseLog', back_populates='dog')
+    sequences = relationship('Sequence', back_populates='dog')
 
 class Picture(Base):
     __tablename__ = 'picture'
@@ -47,7 +49,6 @@ class SenseData(Base):
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     dogId = Column(Integer, ForeignKey('dog.id'))
-    deviceId = Column(Integer, ForeignKey('device.id'))
     measureTime = Column(DateTime(timezone=True), nullable=False)
     ax = Column(Integer, nullable=False)
     ay = Column(Integer, nullable=False)
@@ -59,27 +60,6 @@ class SenseData(Base):
     temperature = Column(Float, nullable=False)
 
     dog = relationship('Dog', back_populates='senseDatas')
-    device = relationship('Device', back_populates='datas')
-
-class Device(Base):
-    __tablename__ = 'device'
-    
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    name = Column(String(100), nullable=False)
-    
-    datas = relationship('SenseData', back_populates='device')
-    connects = relationship('Connected', back_populates='device')
-
-class Connected(Base):
-    __tablename__ = 'connected'
-    
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    userId = Column(Integer, ForeignKey('user.id'))
-    deviceId = Column(Integer, ForeignKey('device.id'))
-    connectTime = Column(DateTime(timezone=True), nullable=False)
-
-    user = relationship('User', back_populates='connects')
-    device = relationship('Device', back_populates='connects')
 
 class RefreshToken(Base):
     __tablename__ = 'refreshToken'
@@ -91,3 +71,51 @@ class RefreshToken(Base):
     expiresAt = Column(DateTime(timezone=True), nullable=False)
 
     user = relationship('User', back_populates='tokens')
+
+class Sequence(Base):
+    __tablename__ = 'sequence'
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    dogId = Column(Integer, ForeignKey('dog.id'))
+    startTime = Column(DateTime(timezone=True), nullable=False)
+    endTime = Column(DateTime(timezone=True), nullable=False)
+    intentsity = Column(Integer, nullable=False)
+    excercise = Column(Float, nullable=False)
+    heartAnomoly = Column(Integer, nullable=False)
+    heartRate = Column(Integer, nullable=False)
+    respirationRate = Column(Integer, nullable=False)
+    
+    dog = relationship('Dog', back_populates='sequences')
+    bcgdatas = relationship('Bcgdata', back_populates='sequence')
+
+class Bcgdata(Base):
+    __tablename__ = 'bcgData'
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    sequenceId = Column(Integer, ForeignKey('sequence.id')) 
+    measureTime = Column(DateTime(timezone=True), nullable=False)
+    heart = Column(Float, nullable=False)
+    respiration = Column(Float, nullable=False)
+
+    
+    sequence = relationship('Sequence', back_populates='bcgdatas')
+
+class TargetExercise(Base):
+    __tablename__ = 'targetExercise'
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    dogId = Column(Integer, ForeignKey('dog.id'))
+    target = Column(Float, nullable=False)
+    today = Column(Float, nullable=False)
+    
+    dog = relationship('Dog', back_populates='targetExercise')
+
+class ExerciseLog(Base):
+    __tablename__ = 'exerciseLog'
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    dogId = Column(Integer, ForeignKey('dog.id'))
+    date = Column(DateTime(timezone=True), nullable=False)
+    exercise = Column(Integer, nullable=False)
+    
+    dog = relationship('Dog', back_populates='exerciseLogs')

@@ -34,7 +34,6 @@ class SenseDataCreate(SenseDataBase):
 class SenseData(SenseDataBase):
     id: int
     dogId: int
-    deviceId: int
 
     class Config:
         from_attributes = True
@@ -55,32 +54,6 @@ class Dog(DogBase):
     userId: int
     pictures: List[Picture] = []
     senseDatas: List[SenseData] = []
-
-    class Config:
-        from_attributes = True
-
-class DeviceBase(BaseModel):
-    name: str
-
-class DeviceCreate(DeviceBase):
-    pass
-
-class Device(DeviceBase):
-    id: int
-    datas: List[SenseData] = []
-
-    class Config:
-        from_attributes = True
-
-class ConnectedBase(BaseModel):
-    connectTime: datetime
-
-class ConnectedCreate(ConnectedBase):
-    userId: int
-    deviceId: int
-
-class Connected(ConnectedBase):
-    id: int
 
     class Config:
         from_attributes = True
@@ -115,8 +88,70 @@ class UserCreateRequest(BaseModel):
 class User(UserBase):
     id: int
     dogs: List[Dog] = []
-    connects: List[Connected] = []
     tokens: List[RefreshToken] = []
 
     class Config:
         from_attributes = True
+
+class SequenceBase(BaseModel):
+    dogId: int
+    startTime: datetime
+    endTime: datetime
+    intentsity: int
+    excercise: float
+    heartAnomoly: int
+    heartRate: int
+    respirationRate: int
+
+class SequenceCreate(SequenceBase):
+    pass
+
+class Sequence(SequenceBase):
+    id: int
+    bcgdatas: List['Bcgdata'] = []
+
+    class Config:
+        from_attributes = True
+
+class BcgdataBase(BaseModel):
+    sequenceId: int
+    measureTime: datetime
+    heart: float
+    respiration: float
+
+class BcgdataCreate(BcgdataBase):
+    pass
+
+class Bcgdata(BcgdataBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+class TargetExerciseBase(BaseModel):
+    dogId: int
+    target: int
+    today: int
+
+class TargetExerciseCreate(TargetExerciseBase):
+    pass
+
+class TargetExercise(TargetExerciseBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+class ExerciseLogBase(BaseModel):
+    dogId: int
+    date: datetime
+    exercise: int
+
+class ExerciseLogCreate(ExerciseLogBase):
+    pass
+
+class ExerciseLog(ExerciseLogBase):
+    id: int
+
+    class Config:
+        frmo_attributes = True
