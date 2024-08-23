@@ -77,11 +77,11 @@ async def run_first_model(db, dog, websocket, input_datas):
         bcgObject = BcgdataCreate(
             sequenceId = sequenceData.id,
             measureTime = data[0],
-            heart = int(data[1]),
-            respiration = int(data[2])
+            heart = float(data[1]),
+            respiration = float(data[2])
         )
         if anomalies_detected: # 심박 이상치 발견시
-            bcgHeart.append({"time": int(data[0]), "heart": int(data[1])})
+            bcgHeart.append({"time": float(data[0]), "heart": float(data[1])})
         create_bcgdata(db, bcgObject)
 
     # sequence 데이터와 bcg 데이터를 클라이언트로 전송

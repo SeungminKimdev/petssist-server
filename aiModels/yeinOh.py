@@ -87,14 +87,14 @@ def find_minima_and_calculate_rr(signal: np.ndarray, sampling_rate: int):
     return respiratory_rate, minima
 
 
-def preprocess_data(time, bcg, sampling_rate=100, normwindow=70, checkwindow=10, thereshold=0.75, run_model=False):
+def preprocess_data(time, bcg, sampling_rate=100, normwindow=70, checkwindow=10, checkthereshold=0.75, run_model=False):
     filtered_hr = get_bcg_heartrate_signal(bcg, sampling_rate)
     filtered_rp = get_bcg_respiration_signal(bcg, sampling_rate)
     
     normalized_signal_h = normalize_signal(filtered_hr, window_size=normwindow)
     normalized_signal_r = normalize_signal(filtered_rp, window_size=normwindow)
     
-    checked_values_h, max_min_diff_h, upto_h = calculate_checked_values(normalized_signal_h, window_size=checkwindow, threshold=0.75)
+    checked_values_h, max_min_diff_h, upto_h = calculate_checked_values(normalized_signal_h, window_size=checkwindow, threshold=checkthereshold)
     peak_h = calculate_upto_result(upto_h)
     bpm_h = calculate_permin(peak_h, sampling_rate)
     
