@@ -94,8 +94,9 @@ class Bcgdata(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     sequenceId = Column(Integer, ForeignKey('sequence.id')) 
     measureTime = Column(DateTime(timezone=True), nullable=False)
-    heart = Column(Integer, nullable=False)
-    respiration = Column(Integer, nullable=False)
+    heart = Column(Float, nullable=False)
+    respiration = Column(Float, nullable=False)
+
     
     sequence = relationship('Sequence', back_populates='bcgdatas')
 
@@ -104,8 +105,8 @@ class TargetExercise(Base):
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     dogId = Column(Integer, ForeignKey('dog.id'))
-    target = Column(Integer, nullable=False)
-    today = Column(Integer, nullable=False)
+    target = Column(Float, nullable=False)
+    today = Column(Float, nullable=False)
     
     dog = relationship('Dog', back_populates='targetExercise')
 

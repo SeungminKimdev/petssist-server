@@ -116,8 +116,8 @@ class Sequence(SequenceBase):
 class BcgdataBase(BaseModel):
     sequenceId: int
     measureTime: datetime
-    heart: int
-    respiration: int
+    heart: float
+    respiration: float
 
 class BcgdataCreate(BcgdataBase):
     pass
