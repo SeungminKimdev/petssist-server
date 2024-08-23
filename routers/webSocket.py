@@ -5,30 +5,85 @@ from typing import List
 from core.security import decode_access_token
 from database import get_db
 from routers.auth import verify_and_refresh_token
-from schemas import SenseDataCreate
+from schemas import SenseDataCreate, SequenceCreate, BcgdataCreate
 from crud import create_sense_data, get_user_by_loginId, get_dog_by_user, get_dog_weight_by_user
+from crud import create_sequence, create_bcgdata, update_target_exercise
 from models import Sequence, Bcgdata
-import json
+from aiModels.yeinOh import *
+from aiModels.dongukKim import *
+import pandas as pd
+import numpy as np
+import pickle
 
 router = APIRouter()
 
+global sensorDataBuffer
+global bufferSize
 sensorDataBuffer = []
 bufferSize = 0
 
-# 모델 함수 - 동욱님 코드
-async def run_first_model(db, dogId, websocket, input_data):
-    # 모델 로직
-    # 모델 함수 (수면 중일 때 실행) - 예인님 코드
-    async def run_second_model(input_data):
-        # PyTorch 모델 로직
-        return True
+async def run_first_model(db, dog, websocket, input_datas):
+    # 필요 데이터 나누기
+    time =  []
+    bcg = []
+    inputSequence = []
+    for data in input_datas:
+        # 동욱님꺼
+        inputSequence.append(list(data.values()))
+        # 예인님꺼
+        time.append(data["time"])
+        bcg.append(data["bcg"])
+    bcg = np.array(bcg)
     
-    sequenceData = Sequence()
-    bcgData = Bcgdata()
-    if bool(sequenceData.heartAnomoly): # 심박 이상치 발견
-        bcgHeart = [{"time": bcg.time, "heart": bcg.heart} for bcg in bcgData]
-    else:
-        bcgHeart = []
+    # 모델 로직 - 동욱님 코드
+    model_filename = 'aiModels/kmeans_model_final.pkl'
+    startT, endT, cluster, excerciseNum = process_data(inputSequence, model_filename, dog.weight)
+    excerciseNum = float(excerciseNum/2) # 운동 값 절반 적용
+    update_target_exercise(db, dog.id, excerciseNum)
+    run_model = (cluster == 0)
+
+    # 모델 함수 (수면 중일 때 이상치 탐지) - 예인님 코드
+    anomalies_detected = False
+    if run_model:
+        bpm_h, bpm_r, combined_matrix_for_s, input = preprocess_data(time, bcg, run_model = True)
+        model_path = "aiModels/TSRNet-33.pt"
+        threshold = 0.0317
+        anomalies_detected, _ = TRSNET(model_path, input, threshold)
+    else: 
+        # bpm_h = 심박수, bpm_r = 호흡수
+        # combined_matrix_for_s = (time, filtered_hr, filtered_rp) = (시간, 심박, 호흡)
+        bpm_h, bpm_r, combined_matrix_for_s, _ = preprocess_data(time, bcg)
+    
+    bpm_h = int(bpm_h)
+    bpm_r = int(bpm_r)
+    combined_matrix_for_s = combined_matrix_for_s[140:420]
+    
+    # 시퀀스 데이터 생성
+    sqCreate = SequenceCreate(
+        dogId = dog.id,
+        startTime = combined_matrix_for_s[0][0],
+        endTime = combined_matrix_for_s[-1][0],
+        intentsity = cluster,
+        excercise = excerciseNum,
+        heartAnomoly = anomalies_detected,
+        heartRate = bpm_h,
+        respirationRate = bpm_r
+    )
+    sequenceData = create_sequence(db, sqCreate)
+    
+    bcgHeart = []
+    # bcg 데이터 생성
+    for data in combined_matrix_for_s:
+        bcgObject = BcgdataCreate(
+            sequenceId = sequenceData.id,
+            measureTime = data[0],
+            heart = int(data[1]),
+            respiration = int(data[2])
+        )
+        if anomalies_detected: # 심박 이상치 발견시
+            bcgHeart.append({"time": int(data[0]), "heart": int(data[1])})
+        create_bcgdata(db, bcgObject)
+
     # sequence 데이터와 bcg 데이터를 클라이언트로 전송
     await websocket.send_json({"heartRate": sequenceData.heartRate,
                                "respirationRate":sequenceData.respirationRate,
@@ -36,8 +91,6 @@ async def run_first_model(db, dogId, websocket, input_data):
                                "senseData":bcgHeart
                               })
     return
-
-
 
 # 센서 데이터를 데이터베이스에 저장
 async def upload_sense_data(db, dog_id, sense_data_list):
@@ -57,6 +110,8 @@ async def upload_sense_data(db, dog_id, sense_data_list):
 
 @router.websocket("/wsbt")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+    global sensorDataBuffer
+    global bufferSize
     await websocket.accept()
     
     try:
@@ -93,12 +148,12 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                 continue
             await upload_sense_data(db, dog.id, sensor_data_list)
             sensorDataBuffer.extend(sensor_data_list)
-            bufferSize += 7
+            bufferSize += len(sensor_data_list)
             if bufferSize >= 560:
-                modelInputData = sensorDataBuffer[:560]
+                modelInputDatas = sensorDataBuffer[:560]
 
                 # 모델 실행
-                await run_first_model(db, dog.id, websocket, modelInputData)
+                await run_first_model(db, dog, websocket, modelInputDatas)
 
                 # 데이터 버퍼 갱신
                 sensorDataBuffer = sensorDataBuffer[280:]

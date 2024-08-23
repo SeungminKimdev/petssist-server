@@ -162,10 +162,10 @@ def create_target_exercise(db: Session, target_exercise: schemas.TargetExerciseC
 def get_target_exercise(db: Session, dog_id: int) -> models.TargetExercise:
     return db.query(models.TargetExercise).filter(models.TargetExercise.dogId == dog_id).first()
 
-def update_target_exercise(db: Session, dog_id: int, today: int) -> models.TargetExercise:
+def update_target_exercise(db: Session, dog_id: int, tempExcercise: float) -> models.TargetExercise:
     target_exercise = get_target_exercise(db, dog_id)
     if target_exercise:
-        target_exercise.today = today
+        target_exercise.today = target_exercise.today + tempExcercise
         db.commit()
         db.refresh(target_exercise)
     return target_exercise

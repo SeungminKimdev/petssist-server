@@ -104,8 +104,8 @@ class TargetExercise(Base):
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     dogId = Column(Integer, ForeignKey('dog.id'))
-    target = Column(Integer, nullable=False)
-    today = Column(Integer, nullable=False)
+    target = Column(Float, nullable=False)
+    today = Column(Float, nullable=False)
     
     dog = relationship('Dog', back_populates='targetExercise')
 
