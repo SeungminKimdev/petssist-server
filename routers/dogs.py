@@ -476,7 +476,6 @@ async def get_sequences(accessToken: str = Header(...), db: Session = Depends(ge
 
         # 현재 시간으로부터 1시간 내의 시퀀스 정보 조회
         now = datetime.utcnow()
-        one_hour_ago = now - timedelta(hours=1)
         sequences = get_recent_sequences(db, dog.id)
         
         if not sequences:
