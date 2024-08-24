@@ -157,7 +157,6 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                 # 모델 실행
                 await run_first_model(db, dog, websocket, modelInputDatas)
 
-
                 # 데이터 버퍼 갱신
                 sensorDataBuffer = sensorDataBuffer[280:]
                 bufferSize -= 280

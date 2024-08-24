@@ -196,11 +196,9 @@ def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
 def get_bcgdata_by_sequence(db: Session, sequence_id: int) -> list[models.Bcgdata]:
     return db.query(models.Bcgdata).filter(models.Bcgdata.sequenceId == sequence_id).order_by(models.Bcgdata.measureTime.asc()).all()
 
-def get_sequences_within_last_hour(db: Session, dog_id: int, start_time: datetime, end_time: datetime) -> list[models.Sequence]:
+def get_recent_sequences(db: Session, dog_id: int) -> list[models.Sequence]:
     return db.query(models.Sequence).filter(
-        and_(
-            models.Sequence.dogId == dog_id,
-            models.Sequence.startTime >= start_time,
-            models.Sequence.endTime <= end_time
-        )
-    ).order_by(models.Sequence.startTime.asc()).all()
+        models.Sequence.dogId == dog_id
+    ).order_by(
+        models.Sequence.id.desc()
+    ).limit(100).all()
