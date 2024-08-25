@@ -381,7 +381,8 @@ async def get_heart_data(accessToken: str = Header(...), db: Session = Depends(g
             content={
                 "intensity": latest_sequence.intentsity,
                 "bcgData": bcg_data_list
-            }
+            },
+            headers={"accessToken": result}
         )
 
     except Exception as e:
@@ -434,7 +435,8 @@ async def get_exercise_data(accessToken: str = Header(...), db: Session = Depend
             content={
                 "target": target_exercise.target,
                 "today": target_exercise.today
-            }
+            },
+            headers={"accessToken": result}
         )
 
     except Exception as e:
@@ -498,7 +500,8 @@ async def get_sequences(accessToken: str = Header(...), db: Session = Depends(ge
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"sequenceDatas": sequence_datas}
+            content={"sequenceDatas": sequence_datas},
+            headers={"accessToken": result}
         )
 
     except Exception as e:
@@ -563,14 +566,15 @@ async def update_exercise_and_target(
         db.commit()
         db.refresh(target_exercise)
 
-        # 최근 5일간의 운동량 평균 계산
+        # 운동량 평균 계산
         average_exercise = get_last_days_average_exercise(db, dog.id, returnToday, returnTarget)
         # 목표 운동량 업데이트
         update_target_exercise(db, dog.id, average_exercise)
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"target": returnTarget, "today": returnToday}
+            content={"target": returnTarget, "today": returnToday},
+            headers={"accessToken": result}
         )
 
     except Exception as e:

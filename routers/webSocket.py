@@ -22,7 +22,7 @@ global bufferSize
 sensorDataBuffer = []
 bufferSize = 0
 
-async def run_first_model(db, dog, websocket, input_datas):
+async def run_first_model(db, dog, websocket, input_datas, result):
     # 필요 데이터 나누기
     time =  []
     bcg = []
@@ -87,7 +87,8 @@ async def run_first_model(db, dog, websocket, input_datas):
     await websocket.send_json({"heartRate": sequenceData.heartRate,
                                "respirationRate":sequenceData.respirationRate,
                                "heartAnomoly":bool(sequenceData.heartAnomoly),
-                               "senseData":bcgHeart
+                               "senseData":bcgHeart,
+                               "accessToken": result
                               })
     return
 
@@ -154,7 +155,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                 modelInputDatas = sensorDataBuffer[:560]
 
                 # 모델 실행
-                await run_first_model(db, dog, websocket, modelInputDatas)
+                await run_first_model(db, dog, websocket, modelInputDatas, result)
 
                 # 데이터 버퍼 갱신
                 sensorDataBuffer = sensorDataBuffer[280:]
