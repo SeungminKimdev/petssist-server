@@ -7,7 +7,7 @@ from database import get_db
 from routers.auth import verify_and_refresh_token
 from schemas import SenseDataCreate, SequenceCreate, BcgdataCreate
 from crud import create_sense_data, get_user_by_loginId, get_dog_by_user, get_dog_weight_by_user
-from crud import create_sequence, create_bcgdata, update_target_exercise
+from crud import create_sequence, create_bcgdata, update_today_exercise
 from models import Sequence, Bcgdata
 from aiModels.yeinOh import *
 from aiModels.dongukKim import *
@@ -39,7 +39,7 @@ async def run_first_model(db, dog, websocket, input_datas):
     model_filename = 'aiModels/kmeans_model_final.pkl'
     startT, endT, cluster, excerciseNum = process_data(inputSequence, model_filename, dog.weight)
     excerciseNum = float(excerciseNum/2) # 운동 값 절반 적용
-    update_target_exercise(db, dog.id, excerciseNum)
+    update_today_exercise(db, dog.id, excerciseNum)
     run_model = (cluster == 0)
 
     # 모델 함수 (수면 중일 때 이상치 탐지) - 예인님 코드

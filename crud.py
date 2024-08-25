@@ -162,13 +162,35 @@ def create_target_exercise(db: Session, target_exercise: schemas.TargetExerciseC
 def get_target_exercise(db: Session, dog_id: int) -> models.TargetExercise:
     return db.query(models.TargetExercise).filter(models.TargetExercise.dogId == dog_id).first()
 
-def update_target_exercise(db: Session, dog_id: int, tempExcercise: float) -> models.TargetExercise:
+def update_today_exercise(db: Session, dog_id: int, tempExcercise: float) -> models.TargetExercise:
     target_exercise = get_target_exercise(db, dog_id)
     if target_exercise:
         target_exercise.today = target_exercise.today + tempExcercise
         db.commit()
         db.refresh(target_exercise)
     return target_exercise
+
+def update_target_exercise(db: Session, dog_id: int, targetNum: float) -> models.TargetExercise:
+    target_exercise = get_target_exercise(db, dog_id)
+    if target_exercise:
+        target_exercise.target = targetNum
+        db.commit()
+        db.refresh(target_exercise)
+    return target_exercise
+
+def get_last_days_average_exercise(db: Session, dog_id: int, yToday:float, yTarget:float) -> float:
+    target_exercises = db.query(models.ExerciseLog).filter(
+        models.ExerciseLog.dogId == dog_id
+    ).order_by(
+        models.ExerciseLog.id.desc()
+    ).limit(10).all()
+    if len(target_exercises) < 5:
+        return_exercise = yTarget
+    elif len(target_exercises) == 5:
+        return_exercise = sum([target.exercise for target in target_exercises]) / 5
+    else:
+        return_exercise = (yToday + yTarget) / 2
+    return return_exercise
 
 # ExerciseLog CRUD
 def create_exercise_log(db: Session, exercise_log: schemas.ExerciseLogCreate) -> models.ExerciseLog:
