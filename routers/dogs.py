@@ -446,7 +446,7 @@ async def get_exercise_data(accessToken: str = Header(...), db: Session = Depend
             content={"errorMessage": "Server error"}
         )
 
-# 1시간 시퀀스 데이터 전송
+# 시퀀스 데이터 전송
 @router.get("/sequences", status_code=status.HTTP_200_OK)
 async def get_sequences(accessToken: str = Header(...), db: Session = Depends(get_db)):
     # 토큰 검증

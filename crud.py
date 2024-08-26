@@ -137,9 +137,6 @@ def create_sequence(db: Session, sequence: schemas.SequenceCreate) -> models.Seq
 def get_sequence(db: Session, sequence_id: int) -> models.Sequence:
     return db.query(models.Sequence).filter(models.Sequence.id == sequence_id).first()
 
-def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
-    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).all()
-
 # Bcgdata CRUD
 def create_bcgdata(db: Session, bcgdata: schemas.BcgdataCreate) -> models.Bcgdata:
     db_bcgdata = models.Bcgdata(**bcgdata.dict())
@@ -212,7 +209,7 @@ def delete_exercise_log(db: Session, log_id: int):
 
 # 특정 강아지의 모든 시퀀스를 조회하는 함수
 def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
-    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).order_by(models.Sequence.startTime.desc()).all()
+    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).order_by(models.Sequence.id.desc()).all()
 
 # 특정 시퀀스와 연관된 BCG 데이터를 조회하는 함수
 def get_bcgdata_by_sequence(db: Session, sequence_id: int) -> list[models.Bcgdata]:
@@ -224,3 +221,19 @@ def get_recent_sequences(db: Session, dog_id: int) -> list[models.Sequence]:
     ).order_by(
         models.Sequence.id.desc()
     ).limit(100).all()
+
+def check_heart_anomaly(db: Session, user_id: int, checkSequence: int, anomalyCount: int) -> bool:
+    dog = get_dog_by_user(db, user_id)
+    if dog:
+        heart_anomaly_count = 0
+        sequences = get_sequences_by_dog(db, dog.id)
+        recent_sequences = sequences[:checkSequence]
+        for sequence in recent_sequences:
+            if sequence.heartAnomoly:
+                heart_anomaly_count += 1
+        if heart_anomaly_count >= anomalyCount:
+            return True
+        else:
+            return False
+    else:
+        return False

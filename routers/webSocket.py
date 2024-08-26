@@ -36,8 +36,8 @@ async def run_first_model(db, dog, websocket, input_datas, result):
     bcg = np.array(bcg)
     
     # 모델 로직 - 동욱님 코드
-    model_filename = 'aiModels/kmeans_model_final.pkl'
-    startT, endT, cluster, excerciseNum = process_data(inputSequence, model_filename, dog.weight)
+    model_filename = 'aiModels/kmeans_model_newfinal.pkl'
+    _, _, cluster, excerciseNum = process_data(inputSequence, model_filename, dog.weight)
     excerciseNum = float(excerciseNum/2) # 운동 값 절반 적용
     update_today_exercise(db, dog.id, excerciseNum)
     run_model = (cluster == 0)
@@ -88,11 +88,10 @@ async def run_first_model(db, dog, websocket, input_datas, result):
                                "respirationRate":sequenceData.respirationRate,
                                "heartAnomoly":bool(sequenceData.heartAnomoly),
                                "senseData":bcgHeart,
+                               "intentsity":sequenceData.intentsity,
                                "accessToken": result
                               })
     return
-
-
 
 # 센서 데이터를 데이터베이스에 저장
 async def upload_sense_data(db, dog_id, sense_data_list):
