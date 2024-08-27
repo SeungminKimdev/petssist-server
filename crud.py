@@ -207,14 +207,19 @@ def delete_exercise_log(db: Session, log_id: int):
     db.query(models.ExerciseLog).filter(models.ExerciseLog.id == log_id).delete()
     db.commit()
 
-# 특정 강아지의 모든 시퀀스를 조회하는 함수
+# 특정 강아지의 모든 시퀀스를 최신 순으로 조회하는 함수
 def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
     return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).order_by(models.Sequence.id.desc()).all()
 
+# 특정 강아지의 모든 시퀀스를 시간 순으로 조회하는 함수
+def get_sequences_asc_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
+    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).order_by(models.Sequence.id.asc()).all()
+
 # 특정 시퀀스와 연관된 BCG 데이터를 조회하는 함수
 def get_bcgdata_by_sequence(db: Session, sequence_id: int) -> list[models.Bcgdata]:
-    return db.query(models.Bcgdata).filter(models.Bcgdata.sequenceId == sequence_id).order_by(models.Bcgdata.measureTime.asc()).all()
+    return db.query(models.Bcgdata).filter(models.Bcgdata.sequenceId == sequence_id).order_by(models.Bcgdata.id.asc()).all()
 
+# 특정 강아지의 최근 시퀀스 100개를 조회하는 함수
 def get_recent_sequences(db: Session, dog_id: int) -> list[models.Sequence]:
     return db.query(models.Sequence).filter(
         models.Sequence.dogId == dog_id
@@ -227,6 +232,8 @@ def check_heart_anomaly(db: Session, user_id: int, checkSequence: int, anomalyCo
     if dog:
         heart_anomaly_count = 0
         sequences = get_sequences_by_dog(db, dog.id)
+        if len(sequences) < checkSequence:
+            return False
         recent_sequences = sequences[:checkSequence]
         for sequence in recent_sequences:
             if sequence.heartAnomoly:
