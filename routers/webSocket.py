@@ -45,14 +45,14 @@ async def run_first_model(db, dog, websocket, input_datas, result):
     # 모델 함수 (수면 중일 때 이상치 탐지) - 예인님 코드
     anomalies_detected = False
     if run_model:
-        bpm_h, bpm_r, combined_matrix_for_s, time_instance, spec_instance = preprocess_data(time, bcg, run_model=True)
-        model_path = "aiModels/TSRNet-63.pt"
-        threshold = 0.05
-        anomalies_detected, _ = TSRNET(model_path, time_instance, spec_instance, threshold)
+        bpm_h, bpm_r, combined_matrix_for_s, time_instance = preprocess_data(time, bcg, run_model=True)
+        model_path = "aiModels/TSRNet-33.pt"
+        threshold = 0.045
+        anomalies_detected, _ = TRSNET(model_path, time_instance, threshold)
     else: 
         # bpm_h = 심박수, bpm_r = 호흡수
         # combined_matrix_for_s = (time, filtered_hr, filtered_rp) = (시간, 심박, 호흡)
-        bpm_h, bpm_r, combined_matrix_for_s, _, _ = preprocess_data(time, bcg)
+        bpm_h, bpm_r, combined_matrix_for_s, _ = preprocess_data(time, bcg)
     
     bpm_h = int(bpm_h)
     bpm_r = int(bpm_r)
