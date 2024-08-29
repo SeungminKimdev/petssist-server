@@ -24,16 +24,9 @@ bufferSize = 0
 
 async def run_first_model(db, dog, websocket, input_datas, result):
     # 필요 데이터 나누기
-    time =  []
-    bcg = []
-    inputSequence = []
-    for data in input_datas:
-        # 동욱님꺼
-        inputSequence.append(list(data.values()))
-        # 예인님꺼
-        time.append(data["time"])
-        bcg.append(data["bcg"])
-    bcg = np.array(bcg)
+    inputSequence = [list(data.values()) for data in input_datas]
+    time = [data["time"] for data in input_datas]
+    bcg = np.array([data["bcg"] for data in input_datas])
     
     # 모델 로직 - 동욱님 코드
     model_filename = 'aiModels/kmeans_model_newfinal.pkl'
@@ -45,14 +38,14 @@ async def run_first_model(db, dog, websocket, input_datas, result):
     # 모델 함수 (수면 중일 때 이상치 탐지) - 예인님 코드
     anomalies_detected = False
     if run_model:
-        bpm_h, bpm_r, combined_matrix_for_s, time_instance = preprocess_data(time, bcg, run_model=True)
-        model_path = "aiModels/TSRNet-33.pt"
-        threshold = 0.045
-        anomalies_detected, _ = TRSNET(model_path, time_instance, threshold)
+        bpm_h, bpm_r, combined_matrix_for_s, time_instance, spec_instance = preprocess_data(time, bcg, run_model=True)
+        model_path = "aiModels/TSRNet-63.pt"
+        threshold = 0.05
+        anomalies_detected, _ = TSRNET(model_path, time_instance, spec_instance, threshold)
     else: 
         # bpm_h = 심박수, bpm_r = 호흡수
         # combined_matrix_for_s = (time, filtered_hr, filtered_rp) = (시간, 심박, 호흡)
-        bpm_h, bpm_r, combined_matrix_for_s, _ = preprocess_data(time, bcg)
+        bpm_h, bpm_r, combined_matrix_for_s, _, _ = preprocess_data(time, bcg)
     
     bpm_h = int(bpm_h)
     bpm_r = int(bpm_r)
@@ -86,7 +79,7 @@ async def run_first_model(db, dog, websocket, input_datas, result):
     # sequence 데이터와 bcg 데이터를 클라이언트로 전송
     await websocket.send_json({"heartRate": sequenceData.heartRate,
                                "respirationRate":sequenceData.respirationRate,
-                               "heartAnomoly":check_heart_anomaly(db, dog.id, 20, 5),
+                               "heartAnomoly":False,
                                "senseData":bcgHeart,
                                "intentsity":sequenceData.intentsity,
                                "accessToken": result
@@ -147,7 +140,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
 
             if not sensor_data_list:
                 continue
-            await upload_sense_data(db, dog.id, sensor_data_list)
+            #await upload_sense_data(db, dog.id, sensor_data_list)
             sensorDataBuffer.extend(sensor_data_list)
             bufferSize += len(sensor_data_list)
             if bufferSize >= 560:
@@ -208,7 +201,7 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                 bcgHeart = [{"time":bcg.measureTime.timestamp(), "heart":bcg.heart} for bcg in get_bcgdata_by_sequence(db, sequenceData.id)]
                 await websocket.send_json({"heartRate": sequenceData.heartRate,
                                 "respirationRate":sequenceData.respirationRate,
-                                "heartAnomoly":check_heart_anomaly(db, dog.id, 20, 5),
+                                "heartAnomoly":False,
                                 "senseData":bcgHeart,
                                 "intentsity":sequenceData.intentsity,
                                 "accessToken": result
