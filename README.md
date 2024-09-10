@@ -12,7 +12,7 @@ Vetssist는 반려동물을 가족 구성원으로 여기는 펫팸족을 위해
 - Team email : [Pelikan Team](mailto:teampelikan1234@gmail.com)
 
 ## 기술 스택
-- Python, FastAPI, PostgreSQL
+- Python, FastAPI, PostgreSQL, Docker, Azure
 
 ## 프로젝트 구조
 이 저장소는 프로젝트의 백엔드 코드만 포함하고 있습니다.
